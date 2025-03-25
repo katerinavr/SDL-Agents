@@ -10,7 +10,7 @@ from autogen import (
 )
 from autogen.coding import LocalCommandLineCodeExecutor
 # from autogen.agentchat.contrib.capabilities.teachability import Teachability
-import autogen_llm
+# import autogen_llm
 from utils.teachability_filtered import DedupTeachability
 from config.settings import OPENAI_API_KEY, anthropic_api_key
 from utils.system_messages import code_writer_system_message
@@ -150,8 +150,8 @@ class AutoGenSystem:
             human_input_mode="ALWAYS",
             system_message="admin. You pose the task. Return 'TERMINATE' in the end when everything is over.",
             llm_config=self.llm_config,
-            # code_execution_config= {"executor": self.executor},
-            code_execution_config=False
+            code_execution_config= {"executor": self.executor},
+            # code_execution_config=False
             # {
             #     "work_dir": "coding_scripts",
             #     "use_docker": False,
@@ -183,7 +183,7 @@ class AutoGenSystem:
             agents=[self.polybot_admin, self.code_writer_agent, self.code_review_agent, self.scraper_agent],
             messages=[],
             max_round=20,
-            select_speaker_auto_model_client_cls=autogen_llm.ArgoModelClient,
+            # select_speaker_auto_model_client_cls=autogen_llm.ArgoModelClient,
             select_speaker_auto_llm_config=self.llm_config
         )
         
@@ -232,7 +232,7 @@ class AutoGenSystem:
 if __name__ == "__main__":
     workdir = "polybot_screenshots_run"
     polybot_file_path = 'n9_robot_operation_commands.py'
-    llm_type = "gpt4o-mini" #  "gpt4o" #"gpt4o-mini" # "claude_35" #"gpt4o" #"gpt4o-mini" # "claude" #'gpt4o'
+    llm_type = "gpt4o" #  "gpt4o" #"gpt4o-mini" # "claude_35" #"gpt4o" #"gpt4o-mini" # "claude" #'gpt4o'
     # llm_config = {"model": "claude-3-5-sonnet-20240620", 'api_key': anthropic_api_key, 'api_type': 'anthropic'}
 
     # Initialize the system with desired LLM
@@ -254,7 +254,7 @@ if __name__ == "__main__":
     prompt_3a = """Write the code to create a polymer film with only PEDOT:PSS defined as polymer A.
                    Identify the best processing conditions from the paper PEDOT PSS manuscript.pdf”."""
     # Initiate chat with desired prompt
-    chat_result = autogen_system.initiate_chat(prompt_3)
+    chat_result = autogen_system.initiate_chat(prompt_1)
 
 
 # you should first move the substrate to the coating stage and then move the vial to the clamp. 

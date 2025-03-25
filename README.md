@@ -15,6 +15,12 @@ cd SDL-Agents
 pip install -r requirements.txt
 ```
 
+3. Add the API keys (config/settings.py):
+```bash
+OPENAI_API_KEY = ""
+anthropic_api_key = ""
+```
+
 ## Components
 
 ### Core Files

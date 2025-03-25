@@ -3,7 +3,7 @@ import loca # location information
 import pandas as pd
 import robotics as ro
 from robotics import procedure as proc
-import rack_status
+import rack_status # always import the rack_status module with the vial and substrate locations
 
 # These are the location settings for the rack that contains the existing polymers which are imported when import loca is called
 # If a polymer does not exist in this list, then respond "Experiment cannot be initiated."

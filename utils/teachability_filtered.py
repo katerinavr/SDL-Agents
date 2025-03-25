@@ -106,8 +106,32 @@ class DedupMemoStore(MemoStore):
             print(colored(f"\nError in get_related_memos: {str(e)}", "red"))
             return []
 
+# class DedupTeachability(Teachability):
+#     def __init__(self, similarity_threshold: float = 0.3, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.memo_store = DedupMemoStore(
+#             similarity_threshold=similarity_threshold,
+#             verbosity=self.verbosity,
+#             path_to_db_dir=self.path_to_db_dir
+#         )
+
 class DedupTeachability(Teachability):
     def __init__(self, similarity_threshold: float = 0.3, *args, **kwargs):
+        # Patch the colored function to handle 'light_green'
+        import functools
+        original_colored = colored
+        
+        @functools.wraps(original_colored)
+        def patched_colored(text, color, *args, **kwargs):
+            if color == 'light_green':
+                color = 'green'  # Replace with a valid color
+            return original_colored(text, color, *args, **kwargs)
+        
+        # Monkey patch the colored function in the teachability module
+        import autogen.agentchat.contrib.capabilities.teachability
+        autogen.agentchat.contrib.capabilities.teachability.colored = patched_colored
+        
+        # Now initialize normally
         super().__init__(*args, **kwargs)
         self.memo_store = DedupMemoStore(
             similarity_threshold=similarity_threshold,
