@@ -10,7 +10,7 @@ results
 __pycache__/
 *.py[cod]
 *$py.class
-
+app_copy.py
 # C extensions
 *.so
 

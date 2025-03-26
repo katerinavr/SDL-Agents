@@ -14,30 +14,7 @@ from autogen.coding import LocalCommandLineCodeExecutor
 from utils.teachability_filtered import DedupTeachability
 from config.settings import OPENAI_API_KEY, anthropic_api_key
 from utils.system_messages import code_writer_system_message
-import asyncio
-import time
 
-
-class CaptureGroupChatManager(autogen.GroupChatManager):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.captured_messages = []
-        
-    def receive(self, message, sender, request_reply=None, silent=False):
-        # Capture the message
-        if not silent:
-            agent_name = getattr(sender, "name", "Unknown")
-            if isinstance(message, dict) and "content" in message:
-                content = message["content"]
-            else:
-                content = str(message)
-                
-            if content:  
-                self.captured_messages.append(f"{agent_name}: {content}")
-        
-        return super().receive(message, sender, request_reply, silent)
-
- 
 def get_llm_config(llm_type: str) -> Dict[str, Any]:
     """
     Get LLM configuration based on the selected model type.    
@@ -106,19 +83,32 @@ def save_code(code: str, filepath: str) -> str:
     return f"Code saved successfully to {filepath}"
 
 
-# Custom termination function to detect successful code execution
-def is_termination_msg(msg):
-    """Determines if the conversation should terminate based on message content"""
-    if msg.get("content") is not None:
-        # Check for explicit TERMINATE command
-        if "TERMINATE" in msg["content"]:
-            return True
-        # Check for successful code execution message
-        if ">>>>>>>> EXECUTING CODE BLOCK" in msg["content"] and "exitcode: 0" in msg["content"]:
-            return True
-    
-    return False
+class TerminatingUserProxyAgent(UserProxyAgent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def is_termination_msg(self, msg):
+        """Custom termination condition implementation"""
+        if msg.get("content") is not None:
+            content = msg.get("content")
+            if "TERMINATE" in content:
+                return True
+            
+            # Check for successful code execution message
+            if ">>>>>>>> EXECUTING CODE BLOCK" in content:
 
+                if "exitcode: 0" in content or "execution succeeded" in content:
+                    return True
+                
+                if "execution failed" in content :
+                    return False
+                return True
+                
+            # Check for the "Next speaker" message that indicates the conversation is stuck
+            if "Next speaker:" in content and "admin" in content:
+                return True
+                
+        return False
 
 class AutoGenSystem:
     def __init__(self, llm_type: str, workdir: str, polybot_file_path: str):
@@ -147,8 +137,6 @@ class AutoGenSystem:
         self._setup_agents()
         self._setup_group_chat()
         self._setup_teachability() # enable this to add teachability
-        print("POLYBOT ADMIN TYPE:", type(self.polybot_admin))
-        print("CODE WRITER TYPE:", type(self.code_writer_agent))
         
     def _setup_agents(self):
         """Set up all required agents with the specified LLM configuration."""
@@ -158,7 +146,7 @@ class AutoGenSystem:
             system_message=code_writer_system_message + self.polybot_file,
             llm_config=self.llm_config,
             code_execution_config=False,
-            # human_input_mode="AUTO",
+            human_input_mode="ALWAYS",
         )
         
         # Code review agent
@@ -182,20 +170,13 @@ class AutoGenSystem:
             human_input_mode="NEVER",
         )
         
-        # Admin agent
-        self.polybot_admin = UserProxyAgent(
+        # Admin agent - Using custom terminating agent class
+        self.polybot_admin = TerminatingUserProxyAgent(
             name="admin",
-            # is_termination_msg=is_termination_msg, 
-            is_termination_msg=lambda msg: msg.get("content") is not None and "TERMINATE" in msg["content"],
             human_input_mode="ALWAYS",
-            system_message="admin. You pose the task. Return 'TERMINATE' in the end when everything is over.",
+            system_message="admin. You pose the task. Return 'TERMINATE' once a task is executed without any errors.",
             llm_config=self.llm_config,
-            # code_execution_config= {"executor": self.executor},
-            code_execution_config=False
-            # {
-            #     "work_dir": "coding_scripts",
-            #     "use_docker": False,
-            # },
+            code_execution_config={"executor": self.executor},
         )
         
         # Register the PDF scraping function
@@ -206,16 +187,6 @@ class AutoGenSystem:
             name="scrape_pdf",
             description="Scrape PDF files and return the content.",
         )
-
-        # Register the save code function
-        # register_function(
-        # save_code,
-        # caller=self.code_writer_agent,
-
-        # executor=self.polybot_admin,
-        # name="save_python_script",
-        # description="Saves the generated code to the working directory.",
-        # )
         
     def _setup_group_chat(self):
         """Set up group chat and manager."""
@@ -227,10 +198,7 @@ class AutoGenSystem:
             select_speaker_auto_llm_config=self.llm_config
         )
         
-        self.manager = CaptureGroupChatManager(groupchat=self.groupchat, llm_config=self.llm_config)
-        print("Group chat manager initialized with agents:")
-        for agent in self.groupchat.agents:
-            print(" -", agent.name)
+        self.manager = autogen.GroupChatManager(groupchat=self.groupchat, llm_config=self.llm_config)
         # self.manager.register_model_client(autogen_llm.ArgoModelClient) # for using the local LLMs
         
     def _setup_teachability(self):
@@ -246,14 +214,6 @@ class AutoGenSystem:
         # Add teachability to agents
         for agent in [self.code_writer_agent, self.code_review_agent, self.manager]:
             self.teachability.add_to_agent(agent)
-        
-        # Unmark these commands where connected to the local version of GPT
-        # # Register model clients
-        # for agent in [self.code_writer_agent, self.code_review_agent, 
-        #              self.scraper_agent, self.polybot_admin]:
-        #     agent.register_model_client(autogen_llm.ArgoModelClient)
-        
-        # self.teachability.analyzer.register_model_client(autogen_llm.ArgoModelClient)
     
     def initiate_chat(self, prompt: str) -> Any:
         """
@@ -268,13 +228,6 @@ class AutoGenSystem:
         return self.polybot_admin.initiate_chat(
             self.manager,
             message=prompt,
-
-        )
-    async def a_initiate_chat(self, message: str):
-        await self.polybot_admin.a_initiate_chat(
-            recipient=self.manager,  # or any agent you want to start the chat
-            message=message,
-            clear_history=True
         )
 
 # Usage example:
@@ -293,24 +246,6 @@ if __name__ == "__main__":
     
     # Example prompts
     prompt_1 = """Write the execution code to move the vial with PEDOT:PSS defined as polymer A to the clamp holder."""
-    prompt_1a ="""Write the code to move the vial with polymer A to the clamp."""
 
-    prompt_2 = """Write the execution code to pick up a substrate and move it to the coating station."""
-    prompt_2a = """Write the code to pick up a substrate and move it to the coating stage."""
-
-    prompt_3 = """Write the execution code to create a polymer film using only PEDOT:PSS defined as polymer A. 
-                  Extract the best range of the film processing conditions from the PEDOT_PSS_manuscript.pdf."""
-    prompt_3a = """Write the code to create a polymer film with only PEDOT:PSS defined as polymer A.
-                   Identify the best processing conditions from the paper PEDOT PSS manuscript.pdf”."""
     # Initiate chat with desired prompt
     chat_result = autogen_system.initiate_chat(prompt_1)
-
-
-# you should first move the substrate to the coating stage and then move the vial to the clamp. 
-# to aspirate polymer from the vial you need to pick up a pipetter and then move the pipette to the clamp inside the vial. 
-# no postprocessing or addictives in the experiment. once you dropcast the polymer to the substrate cap the vial 
-
-# then move the pipette to the clamp inside the vial.to hold the vial to the clamp you should first close the clamp and then release the gripper. to aspirate polymer from the vial you need to pick up a pipetter and move the pipetter to the clamp inside the vial. also perform  the blade coating after dropcasting the polymer. and cap the vial
-
-
-# The steps to create a polymer film is to first move the substrate to the coating stage with the bernouli tool. then remove the bernouli tool and move the vial to the clamp. then uncap the vial and pick up a pipetter. return the pipete to the clamp inside the vial and aspirate the polymer. then dropcast the polymer to the substrata. then cap the vial and remove the pipette, then perform blade coating

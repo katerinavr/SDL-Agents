@@ -1,16 +1,18 @@
 # filename: move_vial_to_clamp.py
 import loca
-import pandas as pd
 import robotics as ro
 from robotics import procedure as proc
-import rack_status  # Import the rack_status module
+import rack_status  # Ensure rack_status is imported
 
 # Initialize the robot controller
 c9 = ro.system.init('controller')
 
+# Ensure rack_status is correctly initialized in ro.runtime
+if 'rack_status' not in ro.runtime:
+    ro.runtime['rack_status'] = rack_status
+
 # Access the rack status to find the location of polymer A
-rack_status = ro.runtime['rack_status']
-vial_rack = rack_status['vial']
+vial_rack = ro.runtime['rack_status']['vial']
 
 # Identify the location of polymer A in the vial rack
 vial_index = proc.find_rack_index('vial', 'polymer_A')
