@@ -46,4 +46,4 @@ python app.py
 
 - `videos`: A video demonstrating the agentic workflow to operate the robotic equipment using a simple prompt.
 
-![Short demo]assets\sdl_agents.gif
+![](assets\sdl_agents.gif)
