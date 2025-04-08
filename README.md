@@ -43,6 +43,6 @@ python app.py
 - `notebooks`: Contain examples of using the agentic pipeline to operate the N9 robot will tasks of increased complexity.
 
 
-- `videos`: A video demonstrating the agentic workflow to operate the robotic equipment using a simple prompt can be found under assets\sdl_agents.gif.
+- `videos`: A video showing the agentic interface to operate the robotic equipment using a simple prompt can be found under assets\sdl_agents.gif.
 
-![demo](https://raw.githubusercontent.com/katerinavr/SDL-Agents/refs/heads/main/assets/sdl_agents_calms_task1.mp4)
+![demo](https://raw.githubusercontent.com/katerinavr/SDL-Agents/refs/heads/main/assets/sdl_agents.gif)
