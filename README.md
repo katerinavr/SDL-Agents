@@ -35,7 +35,6 @@ python app.py
 - `sdl_agents.py`: Main implementation of SDL agents
 
 ### Teachability Databases
-- `teachability_db_claude_35/`: Contains the ChromaDB with the saved input-output pairs after the human teachings using as a base model Claude-3.5-Sonnet
 - `teachability_db_gpt4o/`: Contains the ChromaDB with the saved input-output pairs after the human teachings using as a base model GPT-4o
 - `teachability_db_gpt4o-mini/`: Contains the ChromaDB with the saved input-output pairs after the human teachings using as a base model GPT-4o-mini
 
