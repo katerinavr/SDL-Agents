@@ -3,49 +3,16 @@ import loca # location information
 import pandas as pd
 import robotics as ro
 from robotics import procedure as proc
-import rack_status # always import the rack_status module with the vial and substrate locations
+from lab_setup import rack_status # always import the rack_status module before initializing the system
 
-# These are the location settings for the rack that contains the existing polymers which are imported when import loca is called
-# These settings are imported with the 'import rack_status'
-# If a polymer does not exist in this list, then respond "Experiment cannot be initiated."
-ro.runtime['rack_status'] = {
-    'vial': pd.DataFrame(
-        [   # These are the location settings for the rack that contains the solvents and the polymers 
-            # A 6x8 rack, top-left corner is at index [0,0]
-            # e.g., 'NaCl' is at index [0,1] of the rack
-            # 'None' means empty, 'False' means do not use (keep empty).
-            ['water_gap', 'NaCl', None, None, None, None, None, None],
-            [False, None, 'polymer_A', None, None, None, None, None],
-            [False, None, None, 'carbon_black', None, None, None, None],
-            [None, None, False, None, None, None, None, None],
-            [None, None, False, None, None, None, None, None],
-            [None, None, None, None, None, None, None, None],
-        ]
-    ),
-    'substrate': pd.DataFrame(
-        [   # These are the location settings for the rack that contains the substrates
-            # A 12x6 rack, 'new' means new, unused substrate
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-            ['new', 'new', 'new', 'new', 'new', 'new'],
-        ]
-    ),
-}
-# --------------------------------------------------------------
+# Access the rack status to find the location of the vial
+vial_rack = rack_status['vial']
+
 # hardware modules
 # example: hardware = ro.system.init('hardware_module')
 # available hardware modules: controller, temperature, coater
 c9 = ro.system.init('controller')  # N9 robot controller
-t8 = ro.system.init('temperature')  # temperature controller
+c9.set_temp(1, T)  # temperature controller, where T is coating stage temperature
 coater = ro.system.init('coater')  # coating station
 
 c9.tool = 'substrate_tool' # pick up the bernoulli substrate gripper tool, use this when you need to pick up a substrate
@@ -70,9 +37,6 @@ c9.position = [0, 0, 0, 0] # move robot arm to the initial location
 T = None
 sol_label = None
 
-# set the coating temperature
-t8.set_temp(1, T)
-
 # move solution from the vial rack to the clamp
 vial_index = proc.find_rack_index('vial', sol_label)
 c9.position = loca.vial_rack[vial_index]  # move robot arm to the solution
@@ -84,7 +48,7 @@ c9.position = uncap_position  # move gripper back to the recorded position
 
 # aspirate the solution in the clamp
 c9.aspirate_ml(0, 0.5)  # aspirate 0.5mL
-c9.dispense_ml(0, 0.2)  # dispense 0.2mL
+c9.dispense_ml(0, 0.5)  # dispense 0.2mL
 
 # Pick up a pipette
 proc.new_pipette(c9)  # get a new pipette
@@ -97,14 +61,14 @@ c9.move_axis('z', c9.position[3] - 5000, vel=15000)  # quickly move up by 5 cm r
 
 c9.position = loca.clamp  # move gripper to the clamp
 c9.position = loca.p_clamp  # move pipette to the clamp, inside the vial
-c9.position = loca.p_coater  # move pipette to the coating station
+c9.position = loca.pipette_coater_one  # move pipette to the coating station
 
 # return solution in clamp back to the vial rack
 c9.position = loca.clamp  # move robot arm to the clamp
 c9.position = loca.vial_rack[vial_index]  # move robot arm to the solution
 
 # Return sample to rack, end of experiment
-c9.position = loca.s_coater
+c9.position = loca.s_coater # move substrate to the coating station
 c9.position = loca.substrate_rack_seq[0, 0]  # move substrate to the substrate rack (top-left position)
 
 # Coater related actions:

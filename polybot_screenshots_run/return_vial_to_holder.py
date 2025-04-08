@@ -2,14 +2,14 @@
 import loca
 import robotics as ro
 from robotics import procedure as proc
-import rack_status  # Ensure rack_status is imported
+import lab_setup  # Ensure rack_status is imported
 
 # Initialize the robot controller
 c9 = ro.system.init('controller')
 
 # Access the rack status to find the location of polymer A
-rack_status = ro.runtime['rack_status']
-vial_rack = rack_status['vial']
+lab_setup = ro.runtime['rack_status']
+vial_rack = lab_setup['vial']
 
 # Identify the location of polymer A in the vial rack
 vial_index = proc.find_rack_index('vial', 'polymer_A')

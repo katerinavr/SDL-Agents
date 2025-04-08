@@ -2,10 +2,29 @@ from autogen.agentchat.contrib.capabilities.teachability import Teachability, Me
 from termcolor import colored
 
 class DedupMemoStore(MemoStore):
+    # def __init__(self, similarity_threshold: float = 0.3, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     self.similarity_threshold = similarity_threshold
+    #     self._clean_and_reindex()
+
+
     def __init__(self, similarity_threshold: float = 0.3, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        if 'reset' in kwargs and kwargs['reset']:
+            self.using_cosine = True
+        else:
+            self.using_cosine = True
+            
+        super().__init__(*args, **kwargs)        
+        if self.using_cosine:
+            self.db_client.delete_collection("memos")
+            self.vec_db = self.db_client.create_collection(
+                "memos",
+                metadata={"hnsw:space": "cosine"}
+            )
+            
         self.similarity_threshold = similarity_threshold
-        self._clean_and_reindex()  # Clean up on initialization
+        self._clean_and_reindex()
+
 
     def _clean_and_reindex(self):
         """Clean up missing entries and reindex the remaining ones"""
@@ -115,26 +134,68 @@ class DedupMemoStore(MemoStore):
 #             path_to_db_dir=self.path_to_db_dir
 #         )
 
+# class DedupTeachability(Teachability):
+#     def __init__(self, similarity_threshold: float = 0.3, *args, **kwargs):
+#         # Patch the colored function to handle 'light_green'
+#         import functools
+#         original_colored = colored
+        
+#         @functools.wraps(original_colored)
+#         def patched_colored(text, color, *args, **kwargs):
+#             if color == 'light_green':
+#                 color = 'green'  # Replace with a valid color
+#             return original_colored(text, color, *args, **kwargs)
+        
+#         # Monkey patch the colored function in the teachability module
+#         import autogen.agentchat.contrib.capabilities.teachability
+#         autogen.agentchat.contrib.capabilities.teachability.colored = patched_colored
+        
+#         # Now initialize normally
+#         super().__init__(*args, **kwargs)
+#         self.memo_store = DedupMemoStore(
+#             similarity_threshold=similarity_threshold,
+#             verbosity=self.verbosity,
+#             path_to_db_dir=self.path_to_db_dir
+#         )
+
 class DedupTeachability(Teachability):
-    def __init__(self, similarity_threshold: float = 0.3, *args, **kwargs):
-        # Patch the colored function to handle 'light_green'
+    def __init__(self, similarity_threshold: float = 0.3, use_cosine: bool = True, *args, **kwargs):
         import functools
         original_colored = colored
         
         @functools.wraps(original_colored)
         def patched_colored(text, color, *args, **kwargs):
             if color == 'light_green':
-                color = 'green'  # Replace with a valid color
+                color = 'green' 
             return original_colored(text, color, *args, **kwargs)
         
-        # Monkey patch the colored function in the teachability module
         import autogen.agentchat.contrib.capabilities.teachability
         autogen.agentchat.contrib.capabilities.teachability.colored = patched_colored
         
-        # Now initialize normally
         super().__init__(*args, **kwargs)
+        
+        # MemoStore with cosine similarity
         self.memo_store = DedupMemoStore(
             similarity_threshold=similarity_threshold,
             verbosity=self.verbosity,
-            path_to_db_dir=self.path_to_db_dir
+            path_to_db_dir=self.path_to_db_dir,
+            reset=kwargs.get('reset', False)  
         )
+        
+        if use_cosine and hasattr(self.memo_store, 'db_client') and hasattr(self.memo_store, 'vec_db'):
+            try:
+                current_collection = self.memo_store.vec_db
+                
+                collection_info = self.memo_store.db_client.get_collection("memos")
+                metadata = getattr(collection_info, 'metadata', {}) or {}
+                
+                if metadata.get("hnsw:space") != "cosine":
+                    self.memo_store.db_client.delete_collection("memos")
+                    self.memo_store.vec_db = self.memo_store.db_client.create_collection(
+                        "memos",
+                        metadata={"hnsw:space": "cosine"}
+                    )
+                    if hasattr(self.memo_store, '_clean_and_reindex'):
+                        self.memo_store._clean_and_reindex()
+            except Exception as e:
+                print(f"Error setting up cosine similarity: {e}")

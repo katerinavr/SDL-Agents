@@ -11,7 +11,7 @@ ro.runtime['rack_status'] = {
             ['water_gap', 'NaCl', 'RFU_40mg/ml', 'RFU_50mg/ml', 'RFU_60mg/ml', 'RFU_100mg/ml', None, None],
             # ['water_gap', 'NaCl', 'RFU_30mg/ml', 'RFU_40mg/ml', 'RFU_50mg/ml', 'RFU_100mg/ml', None, None],
             # ['water_gap', 'NaCl', '30mg/ml', '40mg/ml', '50mg/ml', '60mg/ml', None, None],
-            [False, None, 'polymer_A', None, None, None, None, None],
+            [False, None, 'PEDOT:PSS', None, None, None, None, None],
             [False, None, None, None, None, None, None, None],
             [None, None, False, None, None, None, None, None],
             [None, None, False, None, None, None, None, None],
@@ -61,4 +61,5 @@ ro.runtime['rack_status'] = {
         ]
     ),
 }
-# fmt: on
+rack_status = ro.runtime['rack_status']
+
