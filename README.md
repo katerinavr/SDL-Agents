@@ -21,10 +21,15 @@ OPENAI_API_KEY = ""
 anthropic_api_key = ""
 ```
 
+4. Run the Gradio app:
+```bash
+python app.py
+```
+
 ## Components
 
 ### Core Files
-- `autogen_llm.py`: Enables the connection with local LLMs 
+- `app.py`: Gradio app integrating an option for using human feedback, and an option for displaying live video of the robotic station when a USB camera is connected and has an associated URL address. 
 - `n9_robot_operation_commands.py`: Defines the set of available robot operation commands
 - `params.py`: Contains configuration parameters and settings for the system
 - `sdl_agents.py`: Main implementation of SDL agents
@@ -37,3 +42,8 @@ anthropic_api_key = ""
 ## Examples
 
 - `notebooks`: Contain examples of using the agentic pipeline to operate the N9 robot will tasks of increased complexity.
+
+
+- `videos`: A video demonstrating the agentic workflow to operate the robotic equipment using a simple prompt.
+
+![Short demo]assets\sdl_agents.gif
