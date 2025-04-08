@@ -9,8 +9,6 @@ from autogen import (
     register_function,
 )
 from autogen.coding import LocalCommandLineCodeExecutor
-# from autogen.agentchat.contrib.capabilities.teachability import Teachability
-# import autogen_llm
 from utils.teachability_filtered import DedupTeachability
 from config.settings import OPENAI_API_KEY, anthropic_api_key
 from utils.system_messages import code_writer_system_message
@@ -94,16 +92,6 @@ def pdf_to_text(pdf_file: str) -> str:
             page = pdf_reader.pages[page_num]
             text += page.extract_text()
     return text
-
-
-# def save_code(code: str, filepath: str) -> str:
-#     """Save the generated code to a specified file location"""
-#     os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    
-#     # Save the code to the file
-#     with open(filepath, 'w') as f:
-#         f.write(code)
-#     return f"Code saved successfully to {filepath}"
 
 
 # Custom termination function to detect successful code execution
@@ -208,31 +196,21 @@ class AutoGenSystem:
             description="Scrape PDF files and return the content.",
         )
 
-        # # Register the save code function
-        # register_function(
-        # save_code,
-        # caller=self.code_writer_agent,
-        # executor=self.polybot_admin,
-        # name="save_python_code",
-        # description="Saves the generated code to the working directory.",
-        # )
         
     def _setup_group_chat(self):
         """Set up group chat and manager."""
-        from human_memos import get_messages
+        from backup.human_memos import get_messages
         self.groupchat = autogen.GroupChat(
             agents=[self.polybot_admin, self.code_writer_agent, self.code_review_agent, self.scraper_agent],
-            messages=[], #get_messages
+            messages=[], 
             max_round=20,
-            # select_speaker_auto_model_client_cls=autogen_llm.ArgoModelClient,
             select_speaker_auto_llm_config=self.llm_config
-        )
-        
+        )        
         self.manager = CaptureGroupChatManager(groupchat=self.groupchat, llm_config=self.llm_config)
         print("Group chat manager initialized with agents:")
         for agent in self.groupchat.agents:
             print(" -", agent.name)
-        # self.manager.register_model_client(autogen_llm.ArgoModelClient) # for using the local LLMs
+            
         
     def _setup_teachability(self):
         """Set up teachability for the agents."""
@@ -248,14 +226,6 @@ class AutoGenSystem:
         # Add teachability to agents
         for agent in [self.code_writer_agent, self.code_review_agent, self.polybot_admin, self.manager]:
             self.teachability.add_to_agent(agent)
-        
-        # Unmark these commands where connected to the local version of GPT
-        # # Register model clients
-        # for agent in [self.code_writer_agent, self.code_review_agent, 
-        #              self.scraper_agent, self.polybot_admin]:
-        #     agent.register_model_client(autogen_llm.ArgoModelClient)
-        
-        # self.teachability.analyzer.register_model_client(autogen_llm.ArgoModelClient)
     
     def initiate_chat(self, prompt: str) -> Any:
         """
@@ -274,7 +244,7 @@ class AutoGenSystem:
         )
     async def a_initiate_chat(self, message: str):
         await self.polybot_admin.a_initiate_chat(
-            recipient=self.manager,  # or any agent you want to start the chat
+            recipient=self.manager,  
             message=message,
             clear_history=True
         )
@@ -306,13 +276,3 @@ if __name__ == "__main__":
                    Identify the best processing conditions from the paper PEDOT PSS manuscript.pdf”."""
     # Initiate chat with desired prompt
     chat_result = autogen_system.initiate_chat(prompt_3)
-
-
-# you should first move the substrate to the coating stage and then move the vial to the clamp. 
-# to aspirate polymer from the vial you need to pick up a pipetter and then move the pipette to the clamp inside the vial. 
-# no postprocessing or addictives in the experiment. once you dropcast the polymer to the substrate cap the vial 
-
-# then move the pipette to the clamp inside the vial.to hold the vial to the clamp you should first close the clamp and then release the gripper. to aspirate polymer from the vial you need to pick up a pipetter and move the pipetter to the clamp inside the vial. also perform  the blade coating after dropcasting the polymer. and cap the vial
-
-
-# The steps to create a polymer film is to first move the substrate to the coating stage with the bernouli tool. then remove the bernouli tool and move the vial to the clamp. then uncap the vial and pick up a pipetter. return the pipete to the clamp inside the vial and aspirate the polymer. then dropcast the polymer to the substrata. then cap the vial and remove the pipette, then perform blade coating

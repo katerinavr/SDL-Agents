@@ -42,7 +42,7 @@ class CaptureGroupChatManager(autogen.GroupChatManager):
 # Initialize AutoGen system
 workdir = "polybot_exec_run"
 os.makedirs(workdir, exist_ok=True)
-polybot_file_path = 'n9_robot_operation_commands.py'
+polybot_file_path = 'utils/n9_robot_operation_commands.py'
 llm_type = "gpt4o"  
 
 # Create the AutoGen system
@@ -215,10 +215,9 @@ def update_webcam_url(url):
     webcam_url = url
     return f"Webcam URL updated to: {url}"
 
-# Function to update the video HTML based on toggle state and URL
+# Function to update the video HTML 
 def update_video_html(enabled, url):
     if enabled and url:
-        # Using iframe instead of img for better compatibility with various stream types
         return f"""
         <div style="width: 100%; height: 420px; border: 1px solid #ccc; overflow: hidden; position: relative;">
             <iframe src="{url}" style="width: 100%; height: 100%; border: none;" 
@@ -226,7 +225,6 @@ def update_video_html(enabled, url):
         </div>
         """
     else:
-        # Return placeholder when video is disabled
         return """
         <div style="width: 100%; height: 240px; border: 1px solid #ccc; 
              display: flex; align-items: center; justify-content: center; background-color: #f5f5f5;">
