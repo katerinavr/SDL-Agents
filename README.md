@@ -45,4 +45,4 @@ python app.py
 
 - `videos`: A video demonstrating the agentic workflow to operate the robotic equipment using a simple prompt can be found under assets\sdl_agents.gif.
 
-![demo](https://raw.githubusercontent.com/katerinavr/SDL-Agents/refs/heads/main/assets/sdl_agents.gif)
+![demo](https://raw.githubusercontent.com/katerinavr/SDL-Agents/refs/heads/main/assets/sdl_agents_calms_task1.mp4)
