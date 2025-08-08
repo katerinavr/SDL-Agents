@@ -1,0 +1,157 @@
+# filename: pedot_pss_film_improved.py
+
+import loca
+import robotics as ro
+from robotics import procedure as proc
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Configurable parameters
+PEDOT_PSS_VOLUME = 0.95  # mL
+EG_VOLUME = 0.05  # mL
+COATING_TEMP = 90  # °C
+COATING_SPEED = 1  # mm/s
+POST_PROCESSING_TEMP = 60  # °C
+POST_PROCESSING_SPEED = 1  # mm/s
+ANNEALING_TEMP = 130  # °C
+ANNEALING_TIME = 60  # seconds
+
+def initialize_hardware():
+    try:
+        c9 = ro.system.init('controller')
+        t8 = ro.system.init('temperature')
+        coater = ro.system.init('coater')
+        return c9, t8, coater
+    except Exception as e:
+        logging.error(f"Failed to initialize hardware: {str(e)}")
+        raise
+
+def formulate_solution(c9):
+    try:
+        pedot_pss_index = proc.find_rack_index('vial', 'polymer_A')
+        eg_index = proc.find_rack_index('vial', 'EG')
+
+        c9.position = loca.vial_rack[pedot_pss_index]
+        c9.aspirate_ml(0, PEDOT_PSS_VOLUME)
+
+        c9.position = loca.vial_rack[eg_index]
+        c9.aspirate_ml(0, EG_VOLUME)
+
+        c9.position = loca.clamp
+        c9.dispense_ml(0, PEDOT_PSS_VOLUME + EG_VOLUME)
+
+        # Mixing process (assuming a mixing function exists)
+        proc.mix_solution(c9, duration=60)
+
+        logging.info("Solution formulated successfully")
+    except Exception as e:
+        logging.error(f"Error during formulation: {str(e)}")
+        raise
+
+def coat_film(c9, coater, t8):
+    try:
+        t8.set_temp(1, COATING_TEMP)
+
+        c9.tool = 'substrate_tool'
+        c9.set_output('substrate_tool', True)
+        c9.position = loca.substrate_rack_seq[0, 0]
+        c9.move_axis('z', 0)
+
+        c9.position = loca.s_coater
+        c9.set_output('coater_stage_vacuum', True)
+        c9.set_output('substrate_tool', False)
+        c9.tool = None
+
+        c9.position = loca.clamp
+        c9.aspirate_ml(0, 0.2)
+        coater.position = 45
+        coater.velocity = COATING_SPEED
+        c9.position = loca.p_coater
+        c9.dispense_ml(0, 0.2)
+        coater.position = 75
+
+        logging.info("Film coated successfully")
+    except Exception as e:
+        logging.error(f"Error during coating: {str(e)}")
+        raise
+
+def post_process(c9, coater, t8):
+    try:
+        t8.set_temp(1, POST_PROCESSING_TEMP)
+
+        post_process_index = proc.find_rack_index('vial', 'MeOH_EtOH_4_6')
+
+        c9.position = loca.vial_rack[post_process_index]
+        c9.aspirate_ml(0, 0.2)
+        coater.position = 45
+        coater.velocity = POST_PROCESSING_SPEED
+        c9.position = loca.p_coater
+        c9.dispense_ml(0, 0.2)
+        coater.position = 75
+
+        logging.info("Post-processing completed successfully")
+    except Exception as e:
+        logging.error(f"Error during post-processing: {str(e)}")
+        raise
+
+def anneal(c9, t8):
+    try:
+        c9.tool = 'substrate_tool'
+        c9.set_output('substrate_tool', True)
+        c9.set_output('coater_stage_vacuum', False)
+        c9.position = loca.s_coater
+        c9.move_axis('z', 0)
+
+        annealing_position = loca.annealing_block
+        c9.position = annealing_position
+        c9.set_output('substrate_tool', False)
+        c9.tool = None
+
+        t8.set_temp(2, ANNEALING_TEMP)
+        ro.wait(ANNEALING_TIME)
+
+        c9.tool = 'substrate_tool'
+        c9.set_output('substrate_tool', True)
+        c9.position = annealing_position
+        c9.move_axis('z', 0)
+        c9.position = loca.substrate_rack_seq[0, 0]
+        c9.set_output('substrate_tool', False)
+        c9.tool = None
+
+        logging.info("Annealing completed successfully")
+    except Exception as e:
+        logging.error(f"Error during annealing: {str(e)}")
+        raise
+
+def clean_tools(c9, coater):
+    try:
+        # Implement cleaning steps for coating blade and other tools
+        # This is a placeholder and should be replaced with actual cleaning procedures
+        coater.clean()
+        c9.clean()
+        logging.info("Tools cleaned successfully")
+    except Exception as e:
+        logging.error(f"Error during tool cleaning: {str(e)}")
+        raise
+
+def main():
+    try:
+        c9, t8, coater = initialize_hardware()
+
+        formulate_solution(c9)
+        coat_film(c9, coater, t8)
+        for _ in range(3):
+            post_process(c9, coater, t8)
+            clean_tools(c9, coater)
+        anneal(c9, t8)
+
+        logging.info("PEDOT:PSS film processing completed successfully")
+    except Exception as e:
+        logging.error(f"Process failed: {str(e)}")
+    finally:
+        clean_tools(c9, coater)
+
+if __name__ == "__main__":
+    main()
